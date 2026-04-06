@@ -425,9 +425,7 @@ async function scanGaps() {
     var _preBlock = _sepIdx > 0 ? _cvFull.slice(0, _sepIdx).trim() : '';
     var _rawCv   = _sepIdx > 0 ? _cvFull.slice(_cvFull.indexOf('\n', _sepIdx + 50) + 1).trim() : _cvFull;
     var prompt =
-      'You are analysing a CV for 2026 AI career readiness.
-
-' +
+      'You are analysing a CV for 2026 AI career readiness.\n\n' +
       (_preBlock
         ? 'ESTABLISHED SKILL LEVELS (authoritative keyword analysis — treat as ground truth):\n' + _preBlock + '\n\n'
         : '') +
@@ -439,7 +437,7 @@ async function scanGaps() {
       '  strengths (array of 3 PRODUCTION-level skills),\n' +
       '  target (best-fit 2026 AI job title)\n\n' +
       'CV:\n' + _rawCv.slice(0, 5000);
-    var result = await callGeminiShort(apiKey, prompt);
+    var result = await callGeminiShort(apiKey, prompt, { responseMimeType: 'application/json' });
     var si = result.indexOf('{'), ei = result.lastIndexOf('}');
     if (si === -1 || ei <= si) throw new Error('Scan returned no JSON — try again.');
     var data = JSON.parse(result.slice(si, ei + 1));
