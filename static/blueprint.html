@@ -425,25 +425,24 @@ async function scanGaps() {
     var _preBlock = _sepIdx > 0 ? _cvFull.slice(0, _sepIdx).trim() : '';
     var _rawCv   = _sepIdx > 0 ? _cvFull.slice(_cvFull.indexOf('\n', _sepIdx + 50) + 1).trim() : _cvFull;
     var prompt =
-      'You are analysing a CV for 2026 AI career readiness.\n\n' +
+      'You are analysing a CV for 2026 AI career readiness.
+
+' +
       (_preBlock
         ? 'ESTABLISHED SKILL LEVELS (authoritative keyword analysis — treat as ground truth):\n' + _preBlock + '\n\n'
         : '') +
-      'Return ONLY valid JSON — no markdown fences. Keys:\n' +
+      'Respond with ONLY a raw JSON object — no markdown, no code fences, no commentary before or after. Example: {"score":72,"role":"...","gaps":[...],"strengths":[...],"target":"..."}\n' +
+      'Keys:\n' +
       '  score (int 0-100; PRODUCTION in 4+ dimensions = 85+),\n' +
       '  role (current role, 3-4 words),\n' +
-      '  gaps: array of 3-4 skills NOT yet at PRODUCTION per the levels above\n' +
-      '  strengths: array of 3 confirmed PRODUCTION-level skills from the levels above\n' +
-      '  target: best-fit 2026 AI job title given these confirmed levels\n\n' +
+      '  gaps (array of 3-4 skills NOT yet at PRODUCTION),\n' +
+      '  strengths (array of 3 PRODUCTION-level skills),\n' +
+      '  target (best-fit 2026 AI job title)\n\n' +
       'CV:\n' + _rawCv.slice(0, 5000);
-    var result = await callGeminiShort(apiKey, prompt, { responseMimeType: 'application/json' });
-    var data;
-    try { data = JSON.parse(result); }
-    catch (_) {
-      var si = result.indexOf('{'), ei = result.lastIndexOf('}');
-      if (si === -1 || ei <= si) throw new Error('Could not parse scan result \u2014 try again.');
-      data = JSON.parse(result.slice(si, ei + 1));
-    }
+    var result = await callGeminiShort(apiKey, prompt);
+    var si = result.indexOf('{'), ei = result.lastIndexOf('}');
+    if (si === -1 || ei <= si) throw new Error('Scan returned no JSON — try again.');
+    var data = JSON.parse(result.slice(si, ei + 1));
     renderGapScan(data);
     var trEl = document.getElementById('target-role');
     if (trEl && !trEl.value.trim() && data.target) trEl.value = data.target;
