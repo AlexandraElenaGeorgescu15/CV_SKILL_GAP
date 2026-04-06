@@ -296,7 +296,7 @@ async function callGeminiShort(apiKey, userText, extraConfig) {
   var result = await _tryModels(GEMINI_MODELS_SHORT, function (model) {
     return {
       contents: [{ role: 'user', parts: [{ text: userText }] }],
-      generationConfig: Object.assign({ temperature: 0.3, maxOutputTokens: 1200 }, extraConfig || {})
+      generationConfig: Object.assign({ temperature: 0.3, maxOutputTokens: 2048 }, extraConfig || {})
     };
   });
   return result.text;
