@@ -201,9 +201,9 @@ var CV_TEXT_PLACEHOLDER = '';
 var HAS_CV_PLACEHOLDER = false;
 var SYS_PROMPT_PLACEHOLDER = '';
 var API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
-// Fallback chain: best model first, graceful degradation on 404/429/503
-var GEMINI_MODELS      = ['gemini-3.0-pro','gemini-3.0-flash','gemini-2.5-pro','gemini-2.5-flash'];
-var GEMINI_MODELS_SHORT = ['gemini-3.0-flash','gemini-2.5-flash'];  // gap-scan needs speed, not depth
+// Fallback chain: flash first (generous free quota), pro as quality fallback
+var GEMINI_MODELS      = ['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash'];
+var GEMINI_MODELS_SHORT = ['gemini-2.5-flash','gemini-2.0-flash'];  // gap-scan needs speed, not depth
 var _lastRawText = '';
 var _modelUsed = '';
 
@@ -217,7 +217,10 @@ function bootstrap() {
   var lbl = document.getElementById('build-label');
   var scanBtn = document.getElementById('scan-btn');
   if (HAS_CV_PLACEHOLDER) {
-    var firstLine = String(CV_TEXT_PLACEHOLDER).split('\n')[0].slice(0, 60);
+    // Skip pre-assessment header lines to show the actual CV content in the badge
+    var _cvLines = String(CV_TEXT_PLACEHOLDER).split('\n');
+    var _sepLineIdx = _cvLines.findIndex(function(l) { return l.indexOf('=== END PRE-ASSESSMENT') > -1; });
+    var firstLine = (_sepLineIdx >= 0 ? _cvLines[_sepLineIdx + 1] || _cvLines[_sepLineIdx + 2] || '' : _cvLines[0]).trim().slice(0, 60);
     badge.innerHTML = '<span style="color:#34d399;">CV loaded: <strong style="color:#f1f5f9;">' + firstLine + '</strong></span>';
     btn.disabled = false;
     lbl.textContent = 'Build My 2026 Roadmap';
@@ -246,15 +249,15 @@ async function _tryModels(models, bodyFn) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bodyFn(model))
       });
-      // 404 = model doesn't exist yet, 429 = quota, 503 = overloaded — all fallback-worthy
+      // 404 = model doesn't exist, 429 = quota, 503 = overloaded, 400 = unsupported param — all fallback-worthy
       if (!res.ok) {
         var errData = await res.json().catch(function () { return {}; });
         var msg = (errData && errData.error && errData.error.message) || ('HTTP ' + res.status);
-        if (res.status === 404 || res.status === 429 || res.status === 503) {
-          lastErr = new Error(msg + ' [' + model + ']');
-          continue;  // try next model
+        if (res.status === 401 || res.status === 403) {
+          throw new Error(msg);  // bad/revoked key — fatal, no point retrying
         }
-        throw new Error(msg);  // 400/401/403 = fatal, don't retry
+        lastErr = new Error(msg + ' [' + model + ']');
+        continue;  // try next model
       }
       var data = await res.json();
       var txt = data.candidates && data.candidates[0] &&
@@ -275,7 +278,7 @@ async function callGemini(apiKey, systemPrompt, userText) {
     return {
       system_instruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: 'user', parts: [{ text: userText }] }],
-      generationConfig: { temperature: 0.9, maxOutputTokens: 16000, thinkingConfig: { thinkingBudget: 0 } }
+      generationConfig: { temperature: 0.9, maxOutputTokens: 16000 }
     };
   });
   _modelUsed = result.model;
@@ -286,7 +289,7 @@ async function callGeminiShort(apiKey, userText) {
   var result = await _tryModels(GEMINI_MODELS_SHORT, function (model) {
     return {
       contents: [{ role: 'user', parts: [{ text: userText }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } }
+      generationConfig: { temperature: 0.3, maxOutputTokens: 1200 }
     };
   });
   return result.text;
@@ -409,11 +412,23 @@ async function scanGaps() {
   btn.disabled = true; btn.textContent = 'Scanning\u2026'; btn.style.opacity = '.6';
   sr.innerHTML = '';
   try {
-    var prompt = 'Analyse this CV for 2026 AI-native career readiness. ' +
-      'Return ONLY a valid JSON object — no markdown, no code fences, no other text. ' +
-      'Keys: score (int 0-100), role (current role 3-4 words), ' +
-      'gaps (array 3-4 missing skills), strengths (array 3 transferable strengths), ' +
-      'target (best-fit 2026 AI job title).\n\nCV:\n' + String(CV_TEXT_PLACEHOLDER).slice(0, 3500);
+    // Split the CV text into the pre-assessment block and the raw CV
+    var _cvFull = String(CV_TEXT_PLACEHOLDER);
+    var _sepIdx = _cvFull.indexOf('=== END PRE-ASSESSMENT');
+    var _preBlock = _sepIdx > 0 ? _cvFull.slice(0, _sepIdx).trim() : '';
+    var _rawCv   = _sepIdx > 0 ? _cvFull.slice(_cvFull.indexOf('\n', _sepIdx + 50) + 1).trim() : _cvFull;
+    var prompt =
+      'You are analysing a CV for 2026 AI career readiness.\n\n' +
+      (_preBlock
+        ? 'ESTABLISHED SKILL LEVELS (authoritative keyword analysis — treat as ground truth):\n' + _preBlock + '\n\n'
+        : '') +
+      'Return ONLY valid JSON — no markdown fences. Keys:\n' +
+      '  score (int 0-100; PRODUCTION in 4+ dimensions = 85+),\n' +
+      '  role (current role, 3-4 words),\n' +
+      '  gaps (array of 3-4 skills NOT yet at PRODUCTION per the levels above — do NOT list anything already rated PRODUCTION),\n' +
+      '  strengths (array of 3 confirmed PRODUCTION-level skills from the levels above),\n' +
+      '  target (best-fit 2026 AI job title given these confirmed levels)\n\n' +
+      'CV:\n' + _rawCv.slice(0, 5000);
     var result = await callGeminiShort(apiKey, prompt);
     var si = result.indexOf('{'), ei = result.lastIndexOf('}');
     if (si === -1 || ei <= si) throw new Error('No JSON in response \u2014 try again.');

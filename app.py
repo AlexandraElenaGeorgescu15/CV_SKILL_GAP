@@ -728,6 +728,7 @@ with tab2:
 
         lines = ["=== AUTOMATED CV PRE-ASSESSMENT (generated from keyword evidence) ===",
                  "Use this as your starting point for the calibration paragraph.\n"]
+        ratings = {}
 
         for dim, cfg in dims.items():
             n = _hits(cfg["keywords"])
@@ -740,14 +741,15 @@ with tab2:
                 level = "BEGINNER"
             # collect matching keywords for transparency
             matched = [k for k in cfg["keywords"] if k in t][:5]
+            ratings[dim] = {"level": level, "evidence": matched}
             lines.append(f"  {dim}: {level}  (evidence: {', '.join(matched) if matched else 'none found'})")
 
         lines.append("\n=== END PRE-ASSESSMENT — RAW CV FOLLOWS ===\n")
-        return "\n".join(lines)
+        return "\n".join(lines), ratings
 
-    _cv_prescore_block = _cv_prescore(st.session_state.cv_text) if has_cv else ""
-    # Prepend prescore to the CV text the model sees (trim total to ~7000 chars)
-    _cv_with_prescore  = (_cv_prescore_block + st.session_state.cv_text)[:8000]
+    _cv_prescore_block, _cv_ratings = _cv_prescore(st.session_state.cv_text) if has_cv else ("", {})
+    # No hard char limit — Gemini 2.5 Flash has a 1M-token context window
+    _cv_with_prescore  = _cv_prescore_block + st.session_state.cv_text
     cv_json            = json.dumps(_cv_with_prescore)
     # ─────────────────────────────────────────────────────────────────────────
 
@@ -853,7 +855,19 @@ with tab2:
 
         # Inject key + CV data into component HTML, then render via srcdoc
         _key_js   = json.dumps(st.session_state.gemini_key)
-        _sys_js   = json.dumps(SYS_PROMPT)
+        # Augment SYS_PROMPT with authoritative keyword-derived ratings so the
+        # model cannot contradict them with its own CV reading.
+        if _cv_ratings:
+            _auth = "\n\nAUTHORITATIVE SKILL LEVELS — keyword-extracted from THIS specific CV.\n" \
+                    "Your calibration paragraph MUST match these ratings exactly.\n" \
+                    "Do NOT downgrade a PRODUCTION rating without quoting explicit counter-evidence.\n"
+            for _dim, _info in _cv_ratings.items():
+                _ev = ", ".join(_info["evidence"][:3]) if _info["evidence"] else "none"
+                _auth += f"  {_dim}: {_info['level']}  [{_ev}]\n"
+            _sys_augmented = SYS_PROMPT + _auth
+        else:
+            _sys_augmented = SYS_PROMPT
+        _sys_js   = json.dumps(_sys_augmented)
         _has_cv_b = "true" if has_cv else "false"
 
         _blueprint_final = blueprint_html.replace(
