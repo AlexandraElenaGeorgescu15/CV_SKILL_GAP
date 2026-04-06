@@ -203,7 +203,7 @@ var SYS_PROMPT_PLACEHOLDER = '';
 var API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 // Fallback chain: flash first (generous free quota), pro as quality fallback
 var GEMINI_MODELS      = ['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash'];
-var GEMINI_MODELS_SHORT = ['gemini-2.0-flash','gemini-2.5-flash'];  // gap-scan: 2.0-flash first — better JSON mode support
+var GEMINI_MODELS_SHORT = ['gemini-2.5-flash','gemini-2.0-flash'];  // gap-scan: 2.5-flash first (matches roadmap model), 2.0-flash as fallback
 var _lastRawText = '';
 var _modelUsed = '';
 
@@ -437,10 +437,12 @@ async function scanGaps() {
       '  strengths (array of 3 PRODUCTION-level skills),\n' +
       '  target (best-fit 2026 AI job title)\n\n' +
       'CV:\n' + _rawCv.slice(0, 5000);
-    var result = await callGeminiShort(apiKey, prompt, { responseMimeType: 'application/json' });
-    var si = result.indexOf('{'), ei = result.lastIndexOf('}');
-    if (si === -1 || ei <= si) throw new Error('Scan returned no JSON — try again.');
-    var data = JSON.parse(result.slice(si, ei + 1));
+    var result = await callGeminiShort(apiKey, prompt);
+    // Strip markdown code fences the model may add despite being asked not to
+    var _clean = result.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+    var si = _clean.indexOf('{'), ei = _clean.lastIndexOf('}');
+    if (si === -1 || ei <= si) throw new Error('Scan returned no JSON \u2014 the model returned: ' + _clean.slice(0, 120));
+    var data = JSON.parse(_clean.slice(si, ei + 1));
     renderGapScan(data);
     var trEl = document.getElementById('target-role');
     if (trEl && !trEl.value.trim() && data.target) trEl.value = data.target;
