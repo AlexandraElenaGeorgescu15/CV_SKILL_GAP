@@ -260,9 +260,16 @@ async function _tryModels(models, bodyFn) {
         continue;  // try next model
       }
       var data = await res.json();
-      var txt = data.candidates && data.candidates[0] &&
-        data.candidates[0].content && data.candidates[0].content.parts &&
-        data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+      // Thinking models (gemini-2.5-*) return thought parts first (thought:true) then the actual response.
+      // Concatenate all non-thought text parts to get the real output.
+      var txt = '';
+      var parts = data.candidates && data.candidates[0] &&
+        data.candidates[0].content && data.candidates[0].content.parts;
+      if (parts) {
+        for (var pi = 0; pi < parts.length; pi++) {
+          if (!parts[pi].thought && parts[pi].text) txt += parts[pi].text;
+        }
+      }
       if (!txt) { lastErr = new Error('Empty response from ' + model); continue; }
       return { text: txt, model: model };
     } catch (e) {
@@ -285,11 +292,11 @@ async function callGemini(apiKey, systemPrompt, userText) {
   return result.text;
 }
 
-async function callGeminiShort(apiKey, userText) {
+async function callGeminiShort(apiKey, userText, extraConfig) {
   var result = await _tryModels(GEMINI_MODELS_SHORT, function (model) {
     return {
       contents: [{ role: 'user', parts: [{ text: userText }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 1200 }
+      generationConfig: Object.assign({ temperature: 0.3, maxOutputTokens: 1200 }, extraConfig || {})
     };
   });
   return result.text;
@@ -425,14 +432,32 @@ async function scanGaps() {
       'Return ONLY valid JSON — no markdown fences. Keys:\n' +
       '  score (int 0-100; PRODUCTION in 4+ dimensions = 85+),\n' +
       '  role (current role, 3-4 words),\n' +
-      '  gaps (array of 3-4 skills NOT yet at PRODUCTION per the levels above — do NOT list anything already rated PRODUCTION),\n' +
-      '  strengths (array of 3 confirmed PRODUCTION-level skills from the levels above),\n' +
-      '  target (best-fit 2026 AI job title given these confirmed levels)\n\n' +
+      '  gaps: array of 3-4 skills NOT yet at PRODUCTION per the levels above\n' +
+      '  strengths: array of 3 confirmed PRODUCTION-level skills from the levels above\n' +
+      '  target: best-fit 2026 AI job title given these confirmed levels\n\n' +
       'CV:\n' + _rawCv.slice(0, 5000);
-    var result = await callGeminiShort(apiKey, prompt);
-    var si = result.indexOf('{'), ei = result.lastIndexOf('}');
-    if (si === -1 || ei <= si) throw new Error('No JSON in response \u2014 try again.');
-    var data = JSON.parse(result.slice(si, ei + 1));
+    var _scanSchema = {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: 'object',
+        properties: {
+          score:     { type: 'integer' },
+          role:      { type: 'string' },
+          gaps:      { type: 'array', items: { type: 'string' } },
+          strengths: { type: 'array', items: { type: 'string' } },
+          target:    { type: 'string' }
+        },
+        required: ['score', 'role', 'gaps', 'strengths', 'target']
+      }
+    };
+    var result = await callGeminiShort(apiKey, prompt, _scanSchema);
+    var data;
+    try { data = JSON.parse(result); }
+    catch (_) {
+      var si = result.indexOf('{'), ei = result.lastIndexOf('}');
+      if (si === -1 || ei <= si) throw new Error('Could not parse scan result \u2014 try again.');
+      data = JSON.parse(result.slice(si, ei + 1));
+    }
     renderGapScan(data);
     var trEl = document.getElementById('target-role');
     if (trEl && !trEl.value.trim() && data.target) trEl.value = data.target;
