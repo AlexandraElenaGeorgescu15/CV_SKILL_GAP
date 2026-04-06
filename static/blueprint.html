@@ -294,13 +294,13 @@ async function callGemini(apiKey, systemPrompt, userText) {
 
 async function callGeminiShort(apiKey, userText, extraConfig) {
   var result = await _tryModels(GEMINI_MODELS_SHORT, function (model) {
-    var body = {
+    // Disable thinking INSIDE generationConfig so it actually takes effect
+    var genCfg = Object.assign({ temperature: 0.3, maxOutputTokens: 4096 }, extraConfig || {});
+    if (model.indexOf('2.5') !== -1) genCfg.thinkingConfig = { thinkingBudget: 0 };
+    return {
       contents: [{ role: 'user', parts: [{ text: userText }] }],
-      generationConfig: Object.assign({ temperature: 0.3, maxOutputTokens: 4096 }, extraConfig || {})
+      generationConfig: genCfg
     };
-    // Disable thinking on 2.5-flash so output tokens aren't consumed by thought chains
-    if (model.indexOf('2.5') !== -1) body.thinkingConfig = { thinkingBudget: 0 };
-    return body;
   });
   return result.text;
 }

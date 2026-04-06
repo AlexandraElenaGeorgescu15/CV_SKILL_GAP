@@ -478,6 +478,25 @@ with tab1:
             label_visibility="visible",
         )
 
+        with st.expander("📋 On mobile or no PDF? Paste your CV text instead", expanded=False):
+            _paste_in = st.text_area(
+                "CV text",
+                height=200,
+                placeholder="Paste the full text of your CV here…",
+                label_visibility="collapsed",
+                key="cv_paste_area",
+            )
+            if st.button("Load Pasted CV", key="load_paste_btn", use_container_width=True):
+                _t = _paste_in.strip()
+                if len(_t) > 100:
+                    st.session_state.cv_text  = _t
+                    st.session_state.cv_name  = "Pasted CV"
+                    st.session_state.cv_pages = 1
+                    st.session_state.cv_words = len(_t.split())
+                    st.rerun()
+                else:
+                    st.error("Please paste at least a few lines of your CV.")
+
         if uploaded_file is not None:
             if uploaded_file.name != st.session_state.cv_name:
                 scan_ph = st.empty()
@@ -519,8 +538,9 @@ with tab1:
                     scan_ph.empty()
                     st.error(f"Scan failed: {exc}")
 
-            if st.session_state.cv_name:
-                st.markdown(f"""
+        # Success card — shown for both PDF upload and pasted CV
+        if st.session_state.cv_name:
+            st.markdown(f"""
                 <div class="gcard fade-up" style="border-color:rgba(52,211,153,.3);
                   box-shadow:0 0 30px rgba(52,211,153,.06);margin:1rem 0;">
                   <div style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;">
@@ -540,10 +560,10 @@ with tab1:
                 </div>
                 """, unsafe_allow_html=True)
 
-                with st.expander("View extracted text preview", expanded=False):
-                    preview  = st.session_state.cv_text[:3000]
-                    ellipsis = "..." if len(st.session_state.cv_text) > 3000 else ""
-                    st.markdown(f"""
+            with st.expander("View extracted text preview", expanded=False):
+                preview  = st.session_state.cv_text[:3000]
+                ellipsis = "..." if len(st.session_state.cv_text) > 3000 else ""
+                st.markdown(f"""
                     <pre style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
                       border-radius:8px;padding:1rem;font-family:'JetBrains Mono',monospace;
                       font-size:.75rem;color:#64748b;line-height:1.8;
@@ -551,9 +571,10 @@ with tab1:
                       max-height:300px;overflow-y:auto;">{preview}{ellipsis}</pre>
                     """, unsafe_allow_html=True)
 
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.info("Head to the **Blueprint** tab -- your Gemini key will be requested once and saved forever.")
-        else:
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.info("Head to the **Blueprint** tab -- your Gemini key will be requested once and saved forever.")
+
+        elif not st.session_state.cv_name:
             st.markdown("""
             <div style="text-align:center;padding:3.5rem 2rem;margin:1rem 0;
               border:1.5px dashed rgba(255,255,255,.08);border-radius:16px;
