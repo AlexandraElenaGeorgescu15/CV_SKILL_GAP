@@ -203,7 +203,7 @@ var SYS_PROMPT_PLACEHOLDER = '';
 var API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 // Fallback chain: flash first (generous free quota), pro as quality fallback
 var GEMINI_MODELS      = ['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash'];
-var GEMINI_MODELS_SHORT = ['gemini-2.5-flash','gemini-2.0-flash'];  // gap-scan needs speed, not depth
+var GEMINI_MODELS_SHORT = ['gemini-2.0-flash','gemini-2.5-flash'];  // gap-scan: 2.0-flash first — better JSON mode support
 var _lastRawText = '';
 var _modelUsed = '';
 
@@ -436,21 +436,7 @@ async function scanGaps() {
       '  strengths: array of 3 confirmed PRODUCTION-level skills from the levels above\n' +
       '  target: best-fit 2026 AI job title given these confirmed levels\n\n' +
       'CV:\n' + _rawCv.slice(0, 5000);
-    var _scanSchema = {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: 'object',
-        properties: {
-          score:     { type: 'integer' },
-          role:      { type: 'string' },
-          gaps:      { type: 'array', items: { type: 'string' } },
-          strengths: { type: 'array', items: { type: 'string' } },
-          target:    { type: 'string' }
-        },
-        required: ['score', 'role', 'gaps', 'strengths', 'target']
-      }
-    };
-    var result = await callGeminiShort(apiKey, prompt, _scanSchema);
+    var result = await callGeminiShort(apiKey, prompt, { responseMimeType: 'application/json' });
     var data;
     try { data = JSON.parse(result); }
     catch (_) {
