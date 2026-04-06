@@ -1,0 +1,36 @@
+# API keys & secrets
+.aca_gemini_key
+*.key
+*.env
+.env*
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+.venv/
+venv/
+env/
+pip-wheel-metadata/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Dev / debug artefacts
+_*.py
+_*.html
+*.log
+blueprint_test.html
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

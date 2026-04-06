@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<!-- BLUEPRINT v3 — loaded by Python open(), placeholder injection via .replace() -->
+<!-- Placeholders: GEMINI_API_KEY_PLACEHOLDER  CV_TEXT_PLACEHOLDER  HAS_CV_PLACEHOLDER  SYS_PROMPT_PLACEHOLDER -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:#09090f; --glass:rgba(255,255,255,.04); --border:rgba(255,255,255,.09);
+  --g1:#6ee7f7; --g2:#a78bfa; --g3:#f472b6; --g4:#34d399;
+  --text1:#f8fafc; --text2:#94a3b8; --text3:#475569;
+  --warn:#fbbf24; --danger:#f87171; --ok:#34d399;
+  --font:'Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --disp:'Outfit','Inter',sans-serif;
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { font-size:15px; }
+body {
+  background:var(--ink); color:var(--text1); font-family:var(--font);
+  padding:clamp(.8rem,3vw,1.5rem); line-height:1.6;
+  -webkit-font-smoothing:antialiased; min-height:100vh;
+}
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-thumb { background:rgba(110,231,247,.2); border-radius:2px; }
+.card {
+  background:var(--glass); border:1px solid var(--border); border-radius:14px;
+  padding:clamp(1rem,4vw,1.5rem); margin-bottom:1rem; position:relative; overflow:hidden;
+  transition:border-color .3s;
+}
+.card:hover { border-color:rgba(110,231,247,.2); }
+.card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg,transparent,var(--g1),var(--g2),transparent); opacity:.5;
+}
+.chip {
+  display:inline-block; font-family:var(--mono); font-size:.58rem; font-weight:500;
+  letter-spacing:1.5px; text-transform:uppercase; color:var(--g1);
+  background:rgba(110,231,247,.08); border:1px solid rgba(110,231,247,.18);
+  border-radius:20px; padding:3px 10px; margin-bottom:8px;
+}
+.build-btn {
+  width:100%; padding:1rem; margin-top:.6rem; border:none; border-radius:12px; cursor:pointer;
+  font-family:var(--disp); font-size:1rem; font-weight:700; letter-spacing:.5px;
+  color:#09090f; background:linear-gradient(135deg,var(--g4),var(--g1));
+  box-shadow:0 0 28px rgba(110,231,247,.22);
+  transition:all .25s; position:relative; overflow:hidden; -webkit-appearance:none;
+}
+.build-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 40px rgba(110,231,247,.35); }
+.build-btn:active { transform:translateY(0); }
+.build-btn:disabled { opacity:.35; cursor:not-allowed; box-shadow:none; transform:none; }
+.build-btn .shimmer {
+  position:absolute; top:0; left:0; right:0; bottom:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.18) 50%,transparent 100%);
+  transform:translateX(-100%);
+}
+.build-btn:hover:not(:disabled) .shimmer { animation:shimmer .6s ease forwards; }
+#output-wrap { display:none; margin-top:1.2rem; }
+.ai-body { font-size:.9rem; color:var(--text1); line-height:1.9; word-break:break-word; }
+.ai-body h1 {
+  font-family:var(--disp); font-size:1.25rem; font-weight:700;
+  background:linear-gradient(135deg,var(--g1),var(--g2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  margin:1.8rem 0 .6rem; border-bottom:1px solid var(--border); padding-bottom:.4rem;
+}
+.ai-body h2 {
+  font-family:var(--disp); font-size:1.1rem; font-weight:700; color:var(--g1);
+  margin:1.5rem 0 .5rem; display:flex; align-items:center; gap:8px;
+}
+.ai-body h2::before {
+  content:''; display:inline-block; width:3px; height:1em;
+  background:linear-gradient(var(--g1),var(--g2)); border-radius:2px; flex-shrink:0;
+}
+.ai-body h3 { font-family:var(--mono); font-size:.85rem; color:var(--text2); margin:1.1rem 0 .4rem; }
+.ai-body strong { color:var(--text1); }
+.ai-body em { color:var(--text2); font-style:italic; }
+.ai-body ul, .ai-body ol { padding-left:1.4rem; margin:.5rem 0; }
+.ai-body li { margin-bottom:.4rem; color:var(--text2); }
+.ai-body hr { border:none; border-top:1px solid var(--border); margin:1.2rem 0; }
+.ai-body p { margin:.5rem 0; }
+.ai-body a { color:#6ee7f7; text-decoration:none; border-bottom:1px solid rgba(110,231,247,.3); }
+.ai-body a:hover { border-bottom-color:var(--g1); }
+#err-wrap { display:none; margin-top:1rem; }
+.err-card {
+  background:rgba(248,113,113,.06); border:1px solid rgba(248,113,113,.25);
+  border-radius:12px; padding:1.5rem; text-align:center;
+}
+.err-title { font-family:var(--disp); font-size:1.05rem; color:var(--danger); margin-bottom:8px; font-weight:700; }
+.err-body { font-size:.85rem; color:#b07070; line-height:1.6; word-break:break-all; }
+.retry-btn {
+  background:none; border:1px solid rgba(248,113,113,.3); color:var(--danger);
+  font-family:var(--mono); font-size:.72rem; letter-spacing:1px;
+  padding:.55rem 1.4rem; border-radius:8px; cursor:pointer; margin-top:.9rem;
+  transition:all .2s; -webkit-appearance:none;
+}
+.retry-btn:hover { background:rgba(248,113,113,.08); }
+.gap-badge {
+  display:inline-block; font-family:var(--mono); font-size:.6rem; font-weight:500;
+  letter-spacing:.5px; padding:3px 9px; border-radius:20px; margin:2px 3px 2px 0;
+}
+.gap-bad { color:#f87171; background:rgba(248,113,113,.1); border:1px solid rgba(248,113,113,.25); }
+.gap-good { color:#34d399; background:rgba(52,211,153,.1); border:1px solid rgba(52,211,153,.25); }
+#scan-result { margin:.6rem 0; }
+.phase-nav {
+  display:flex; gap:.35rem; flex-wrap:wrap; padding:.7rem 0 .1rem;
+  border-top:1px solid var(--border); margin-top:1rem;
+}
+.phase-nav a {
+  font-family:var(--mono); font-size:.6rem; letter-spacing:.5px;
+  color:var(--text3); background:rgba(255,255,255,.04);
+  border:1px solid var(--border); border-radius:6px;
+  padding:3px 8px; text-decoration:none; cursor:pointer; transition:all .2s;
+}
+.phase-nav a:hover { color:var(--g1); border-color:rgba(110,231,247,.25); }
+@keyframes shimmer { from { transform:translateX(-100%) } to { transform:translateX(200%) } }
+@keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
+@keyframes blinkCursor { 0%,100% { opacity:1; } 50% { opacity:0; } }
+@keyframes countUp { from { opacity:0; transform:scale(.75); } to { opacity:1; transform:scale(1); } }
+@keyframes pulseBar { 0%,100% { margin-left:0; width:25%; } 50% { margin-left:40%; width:35%; } }
+.fadein { animation:fadeUp .45s ease forwards; }
+@media(max-width:480px) { body { padding:.8rem; } .build-btn { font-size:.92rem; padding:.9rem; } }
+</style>
+</head>
+<body>
+<div style="position:fixed;top:-100px;left:-80px;width:300px;height:300px;border-radius:50%;
+  pointer-events:none;z-index:-1;
+  background:radial-gradient(circle,rgba(110,231,247,.06) 0%,transparent 70%);"></div>
+
+<div id="cv-badge" style="font-size:.82rem;color:#94a3b8;margin-bottom:.6rem;min-height:1.4rem;"></div>
+
+<div style="margin:.4rem 0 .7rem;">
+  <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--text3);margin-bottom:5px;">Target Role
+    <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.8em;
+      color:rgba(255,255,255,.2);">&nbsp;— optional</span></div>
+  <input id="target-role" type="text"
+    placeholder="e.g. AI Engineer &middot; Context Engineering Lead &middot; ML Product Manager"
+    style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+      border-radius:10px;padding:.65rem .9rem;font-family:var(--font);font-size:.85rem;
+      color:var(--text1);outline:none;transition:border-color .25s;-webkit-appearance:none;">
+</div>
+
+<div id="scan-result"></div>
+<button id="scan-btn" onclick="scanGaps()"
+  style="width:100%;margin-bottom:.5rem;padding:.68rem;border:1px solid rgba(110,231,247,.2);
+    border-radius:12px;background:rgba(110,231,247,.05);color:var(--g1);
+    font-family:var(--mono);font-size:.7rem;letter-spacing:1px;cursor:pointer;
+    transition:all .2s;-webkit-appearance:none;">
+  ⚡ Analyse My Gaps First (~30s)
+</button>
+<button class="build-btn" id="build-btn" onclick="buildRoadmap()">
+  <span class="shimmer"></span>
+  <span id="build-label">Build My 2026 Roadmap</span>
+</button>
+
+<div id="output-wrap" class="card">
+  <div class="chip">Your 2026 AI-Native Career Roadmap</div>
+  <div style="font-family:'Outfit',sans-serif;font-size:1.1rem;font-weight:700;
+      color:#f8fafc;margin-bottom:1rem;">Strategic Upskilling Sequence &middot; 12 Weeks</div>
+  <div id="output-body"></div>
+  <div id="output-footer" style="margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border);">
+    <div id="gen-stats" style="display:none;font-family:var(--mono);font-size:.62rem;
+        color:var(--text3);margin-bottom:.75rem;line-height:1.8;">
+      <span id="gen-model" style="color:var(--g1);margin-right:.4rem;"></span>
+      Generated in <span id="gen-time" style="color:var(--text2);"></span>
+      &middot; <span id="gen-words" style="color:var(--text2);"></span> words
+      &middot; ~<span id="gen-read" style="color:var(--text2);"></span> min read
+    </div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+      <button class="build-btn" style="flex:3;min-width:140px;opacity:.75;margin-top:0;"
+          onclick="buildRoadmap()">Regenerate</button>
+      <button id="copy-btn" onclick="copyRoadmap(event)"
+        style="flex:1;min-width:70px;padding:.85rem .4rem;border:1px solid rgba(110,231,247,.2);
+          border-radius:12px;background:rgba(110,231,247,.06);color:var(--g1);
+          font-family:var(--mono);font-size:.7rem;cursor:pointer;
+          transition:all .2s;-webkit-appearance:none;margin-top:0;">Copy</button>
+      <button onclick="downloadRoadmap()"
+        style="flex:1;min-width:56px;padding:.85rem .4rem;border:1px solid rgba(167,139,250,.2);
+          border-radius:12px;background:rgba(167,139,250,.06);color:var(--g2);
+          font-family:var(--mono);font-size:.7rem;cursor:pointer;
+          transition:all .2s;-webkit-appearance:none;margin-top:0;">.md</button>
+    </div>
+  </div>
+</div>
+
+<div id="err-wrap">
+  <div class="err-card">
+    <div class="err-title">Generation Failed</div>
+    <div class="err-body" id="err-msg">An error occurred.</div>
+    <button class="retry-btn" onclick="buildRoadmap()">Retry</button>
+  </div>
+</div>
+
+<script>
+var GEMINI_API_KEY_PLACEHOLDER = '';
+var CV_TEXT_PLACEHOLDER = '';
+var HAS_CV_PLACEHOLDER = false;
+var SYS_PROMPT_PLACEHOLDER = '';
+var API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
+// Fallback chain: best model first, graceful degradation on 404/429/503
+var GEMINI_MODELS      = ['gemini-3.0-pro','gemini-3.0-flash','gemini-2.5-pro','gemini-2.5-flash'];
+var GEMINI_MODELS_SHORT = ['gemini-3.0-flash','gemini-2.5-flash'];  // gap-scan needs speed, not depth
+var _lastRawText = '';
+var _modelUsed = '';
+
+function show(id) { var el = document.getElementById(id); if (el) el.style.display = 'block'; }
+function hide(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
+function showErr(msg) { document.getElementById('err-msg').textContent = msg; show('err-wrap'); }
+
+function bootstrap() {
+  var badge = document.getElementById('cv-badge');
+  var btn = document.getElementById('build-btn');
+  var lbl = document.getElementById('build-label');
+  var scanBtn = document.getElementById('scan-btn');
+  if (HAS_CV_PLACEHOLDER) {
+    var firstLine = String(CV_TEXT_PLACEHOLDER).split('\n')[0].slice(0, 60);
+    badge.innerHTML = '<span style="color:#34d399;">CV loaded: <strong style="color:#f1f5f9;">' + firstLine + '</strong></span>';
+    btn.disabled = false;
+    lbl.textContent = 'Build My 2026 Roadmap';
+    scanBtn.disabled = false;
+    scanBtn.style.opacity = '1';
+  } else {
+    badge.innerHTML =
+      '<div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);' +
+      'border-radius:10px;padding:.65rem 1rem;"><strong style="color:#f87171;">No CV loaded</strong> ' +
+      '<span style="color:#64748b;">— go to Bio-Scan tab and upload your PDF first.</span></div>';
+    btn.disabled = true;
+    scanBtn.disabled = true;
+    scanBtn.style.opacity = '.3';
+  }
+}
+
+// Try each model in the fallback chain; returns {text, model} or throws last error
+async function _tryModels(models, bodyFn) {
+  var lastErr;
+  for (var i = 0; i < models.length; i++) {
+    var model = models[i];
+    var url = API_BASE + model + ':generateContent?key=' + encodeURIComponent(GEMINI_API_KEY_PLACEHOLDER);
+    try {
+      var res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyFn(model))
+      });
+      // 404 = model doesn't exist yet, 429 = quota, 503 = overloaded — all fallback-worthy
+      if (!res.ok) {
+        var errData = await res.json().catch(function () { return {}; });
+        var msg = (errData && errData.error && errData.error.message) || ('HTTP ' + res.status);
+        if (res.status === 404 || res.status === 429 || res.status === 503) {
+          lastErr = new Error(msg + ' [' + model + ']');
+          continue;  // try next model
+        }
+        throw new Error(msg);  // 400/401/403 = fatal, don't retry
+      }
+      var data = await res.json();
+      var txt = data.candidates && data.candidates[0] &&
+        data.candidates[0].content && data.candidates[0].content.parts &&
+        data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+      if (!txt) { lastErr = new Error('Empty response from ' + model); continue; }
+      return { text: txt, model: model };
+    } catch (e) {
+      lastErr = e;
+      // Network errors also fall through to next model
+    }
+  }
+  throw lastErr || new Error('All models failed');
+}
+
+async function callGemini(apiKey, systemPrompt, userText) {
+  var result = await _tryModels(GEMINI_MODELS, function (model) {
+    return {
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userText }] }],
+      generationConfig: { temperature: 0.9, maxOutputTokens: 16000, thinkingConfig: { thinkingBudget: 0 } }
+    };
+  });
+  _modelUsed = result.model;
+  return result.text;
+}
+
+async function callGeminiShort(apiKey, userText) {
+  var result = await _tryModels(GEMINI_MODELS_SHORT, function (model) {
+    return {
+      contents: [{ role: 'user', parts: [{ text: userText }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } }
+    };
+  });
+  return result.text;
+}
+
+async function buildRoadmap() {
+  var apiKey = GEMINI_API_KEY_PLACEHOLDER;
+  if (!apiKey) { showErr('No API key — use Change Key above.'); show('err-wrap'); return; }
+  var targetRole = ((document.getElementById('target-role') || {}).value || '').trim();
+  _lastRawText = '';
+  var btn = document.getElementById('build-btn');
+  btn.disabled = true;
+  hide('err-wrap'); hide('gen-stats');
+  show('output-wrap');
+  document.getElementById('output-body').innerHTML =
+    '<div style="padding:.6rem 0;">' +
+    '<div style="font-family:var(--mono);font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:.7rem;">&#9889; Generating with Gemini 2.5 Flash&#8230;</div>' +
+    '<div style="width:100%;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-bottom:1rem;">' +
+    '<div style="height:100%;width:25%;background:linear-gradient(90deg,var(--g4),var(--g1),var(--g2));border-radius:2px;animation:pulseBar 1.4s ease-in-out infinite;"></div></div>' +
+    '<div id="stream-live" style="font-family:var(--font);font-size:.88rem;color:var(--text2);line-height:1.85;white-space:pre-wrap;word-break:break-word;"></div></div>';
+  var startTime = Date.now();
+  try {
+    var roleHint = targetRole ? '\n\nTARGET ROLE: ' + targetRole : '';
+    var userMsg =
+      'CANDIDATE CV:\n\n' +
+      String(CV_TEXT_PLACEHOLDER) +
+      roleHint +
+      '\n\n---\n' +
+      'Write the calibration paragraph first, then the 5 phases.';
+    var text = await callGemini(apiKey, String(SYS_PROMPT_PLACEHOLDER), userMsg);
+    _lastRawText = text;
+    var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    var wc = text.split(/\s+/).filter(Boolean).length;
+    typewriterRender(text, elapsed, wc);
+  } catch (err) {
+    hide('output-wrap');
+    var m = String(err && err.message ? err.message : err);
+    if (/API_KEY_INVALID|invalid.*key|bad.*key/i.test(m)) m = 'Invalid API key. Use the Change Key button above.';
+    else if (/quota|rate.*limit|429/i.test(m)) m = 'Quota exceeded — try again tomorrow or upgrade at aistudio.google.com.';
+    else if (/network|fetch|failed to fetch/i.test(m)) m = 'Network error — check connection and retry.';
+    showErr(m); show('err-wrap');
+  } finally {
+    btn.disabled = !HAS_CV_PLACEHOLDER;
+  }
+}
+
+function typewriterRender(text, elapsed, wordCount) {
+  var liveEl = document.getElementById('stream-live');
+  if (!liveEl) { renderOutput(text, elapsed, wordCount); return; }
+  var i = 0, SPEED = 120;
+  var esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  var cursor = '<span style="display:inline-block;width:2px;height:.85em;background:var(--g1);vertical-align:middle;margin-left:2px;border-radius:1px;animation:blinkCursor .8s step-end infinite;"></span>';
+  function tick() {
+    if (i < esc.length) {
+      i = Math.min(i + SPEED, esc.length);
+      liveEl.innerHTML = esc.slice(0, i) + cursor;
+      requestAnimationFrame(tick);
+    } else {
+      renderOutput(text, elapsed, wordCount);
+      setTimeout(fireConfetti, 300);
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+function renderOutput(raw, elapsed, wordCount) {
+  var h = raw
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>')
+    .replace(/^#{4,6}\s(.+)$/gm, '<h3>$1</h3>')
+    .replace(/^###\s(.+)$/gm, '<h3>$1</h3>')
+    .replace(/^##\s(.+)$/gm, '<h2>$1</h2>')
+    .replace(/^#\s(.+)$/gm, '<h1>$1</h1>')
+    .replace(/^---+$/gm, '<hr>')
+    .replace(/^[-*\u2022]\s(.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, function (m) { return '<ul>' + m + '</ul>'; })
+    .replace(/\n\n+/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+    .replace(/(https?:\/\/[^\s<&"]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+  document.getElementById('output-body').innerHTML = '<div class="ai-body fadein"><p>' + h + '</p></div>';
+  buildPhaseNav();
+  if (elapsed && wordCount) {
+    if (_modelUsed) document.getElementById('gen-model').textContent = _modelUsed;
+    document.getElementById('gen-time').textContent = elapsed + 's';
+    document.getElementById('gen-words').textContent = Number(wordCount).toLocaleString();
+    document.getElementById('gen-read').textContent = Math.ceil(wordCount / 200);
+    show('gen-stats');
+  }
+  show('output-wrap');
+  document.getElementById('output-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function buildPhaseNav() {
+  var old = document.getElementById('phase-nav');
+  if (old) old.remove();
+  var headers = document.querySelectorAll('#output-body h2');
+  if (headers.length < 2) return;
+  var nav = document.createElement('div');
+  nav.id = 'phase-nav'; nav.className = 'phase-nav';
+  headers.forEach(function (h, i) {
+    h.id = 'ph-' + i;
+    var a = document.createElement('a');
+    var label = h.textContent.replace(/^[-*#\s]+/, '').replace(/\s*\(.*\)/, '').trim();
+    a.textContent = label.length > 22 ? label.slice(0, 22) + '\u2026' : label;
+    a.href = '#ph-' + i;
+    a.onclick = (function (hh) { return function (e) { e.preventDefault(); hh.scrollIntoView({ behavior: 'smooth' }); }; })(h);
+    nav.appendChild(a);
+  });
+  var footer = document.getElementById('output-footer');
+  if (footer) footer.appendChild(nav);
+}
+
+async function scanGaps() {
+  var apiKey = GEMINI_API_KEY_PLACEHOLDER;
+  if (!apiKey || !HAS_CV_PLACEHOLDER) return;
+  var btn = document.getElementById('scan-btn');
+  var sr  = document.getElementById('scan-result');
+  btn.disabled = true; btn.textContent = 'Scanning\u2026'; btn.style.opacity = '.6';
+  sr.innerHTML = '';
+  try {
+    var prompt = 'Analyse this CV for 2026 AI-native career readiness. ' +
+      'Return ONLY a valid JSON object — no markdown, no code fences, no other text. ' +
+      'Keys: score (int 0-100), role (current role 3-4 words), ' +
+      'gaps (array 3-4 missing skills), strengths (array 3 transferable strengths), ' +
+      'target (best-fit 2026 AI job title).\n\nCV:\n' + String(CV_TEXT_PLACEHOLDER).slice(0, 3500);
+    var result = await callGeminiShort(apiKey, prompt);
+    var si = result.indexOf('{'), ei = result.lastIndexOf('}');
+    if (si === -1 || ei <= si) throw new Error('No JSON in response \u2014 try again.');
+    var data = JSON.parse(result.slice(si, ei + 1));
+    renderGapScan(data);
+    var trEl = document.getElementById('target-role');
+    if (trEl && !trEl.value.trim() && data.target) trEl.value = data.target;
+  } catch (e) {
+    sr.innerHTML = '<div style="padding:.55rem .9rem;font-size:.78rem;color:#f87171;background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.2);border-radius:8px;">' + (e && e.message ? e.message : 'Scan failed \u2014 check your API key.') + '</div>';
+    sr.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = '\u26a1 Rescan'; btn.style.opacity = '1';
+}
+
+function renderGapScan(data) {
+  var score = parseInt(data.score) || 0;
+  var color = score >= 70 ? 'var(--ok)' : score >= 45 ? 'var(--warn)' : 'var(--danger)';
+  var gaps = (data.gaps || []).map(function (g) { return '<span class="gap-badge gap-bad">' + g + '</span>'; }).join('');
+  var strs = (data.strengths || []).map(function (s) { return '<span class="gap-badge gap-good">' + s + '</span>'; }).join('');
+  var rHtml = data.role ? '<div style="font-size:.78rem;color:var(--text2);margin-bottom:.5rem;">Profile: <strong style="color:var(--text1);">' + data.role + '</strong></div>' : '';
+  var sr = document.getElementById('scan-result');
+  sr.innerHTML =
+    '<div class="card" style="border-color:rgba(110,231,247,.15);margin-bottom:.4rem;">' +
+    '<div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;">' +
+    '<div style="text-align:center;min-width:54px;">' +
+    '<div id="score-num" style="font-family:var(--disp);font-size:2.2rem;font-weight:800;line-height:1;color:' + color + ';animation:countUp .5s ease forwards;">0</div>' +
+    '<div style="font-family:var(--mono);font-size:.52rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-top:2px;">AI-Ready</div></div>' +
+    '<div style="flex:1;min-width:170px;">' + rHtml +
+    '<div style="font-family:var(--mono);font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;color:#f87171;margin-bottom:4px;">Gaps to Close</div>' +
+    '<div style="margin-bottom:.6rem;">' + (gaps || '<span style="color:var(--text3);font-size:.8rem;">None detected</span>') + '</div>' +
+    '<div style="font-family:var(--mono);font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;color:#34d399;margin-bottom:4px;">Transferable Strengths</div>' +
+    '<div>' + (strs || '') + '</div></div></div></div>';
+  sr.style.display = 'block';
+  var sn = document.getElementById('score-num');
+  if (sn) {
+    var cur = 0, step = Math.max(1, Math.ceil(score / 28));
+    var t = setInterval(function () { cur = Math.min(cur + step, score); sn.textContent = cur; if (cur >= score) clearInterval(t); }, 32);
+  }
+}
+
+function copyRoadmap(e) {
+  if (!_lastRawText) return;
+  var btn = e && e.currentTarget;
+  navigator.clipboard.writeText(_lastRawText).then(function () {
+    if (btn) {
+      var orig = btn.textContent;
+      btn.textContent = 'Copied!'; btn.style.color = 'var(--ok)'; btn.style.borderColor = 'rgba(52,211,153,.3)';
+      setTimeout(function () { btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 2000);
+    }
+  }).catch(function () { alert('Copy failed.'); });
+}
+
+function downloadRoadmap() {
+  if (!_lastRawText) return;
+  var blob = new Blob([_lastRawText], { type: 'text/markdown;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'ai-career-roadmap-2026.md';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function fireConfetti() {
+  var canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+  document.body.appendChild(canvas);
+  var ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth || 400; canvas.height = window.innerHeight || 700;
+  var cols = ['#6ee7f7','#a78bfa','#f472b6','#34d399','#fbbf24'], ps = [];
+  for (var i = 0; i < 90; i++) ps.push({ x:Math.random()*canvas.width, y:Math.random()*-canvas.height*.3, vx:(Math.random()-.5)*5, vy:Math.random()*4+2, c:cols[i%5], w:Math.random()*9+4, h:Math.random()*5+2, r:Math.random()*6.28, rs:(Math.random()-.5)*.18 });
+  var frame = 0;
+  (function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for (var i=ps.length-1;i>=0;i--) {
+      var p=ps[i]; p.x+=p.vx; p.y+=p.vy; p.vy+=.07; p.r+=p.rs;
+      if (p.y>canvas.height+20) { ps.splice(i,1); continue; }
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.r); ctx.globalAlpha=.88; ctx.fillStyle=p.c;
+      ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+    }
+    if (++frame<220&&ps.length) requestAnimationFrame(draw); else canvas.remove();
+  })();
+}
+
+bootstrap();
+</script>
+</body>
+</html>
