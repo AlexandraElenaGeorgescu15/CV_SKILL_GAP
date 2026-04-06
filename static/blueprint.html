@@ -203,7 +203,7 @@ var SYS_PROMPT_PLACEHOLDER = '';
 var API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 // Fallback chain: flash first (generous free quota), pro as quality fallback
 var GEMINI_MODELS      = ['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash'];
-var GEMINI_MODELS_SHORT = ['gemini-2.5-flash','gemini-2.0-flash'];  // gap-scan: 2.5-flash first (matches roadmap model), 2.0-flash as fallback
+var GEMINI_MODELS_SHORT = ['gemini-2.0-flash','gemini-2.5-flash'];  // gap-scan: 2.0-flash first (no thinking overhead), 2.5-flash as fallback
 var _lastRawText = '';
 var _modelUsed = '';
 
@@ -294,10 +294,13 @@ async function callGemini(apiKey, systemPrompt, userText) {
 
 async function callGeminiShort(apiKey, userText, extraConfig) {
   var result = await _tryModels(GEMINI_MODELS_SHORT, function (model) {
-    return {
+    var body = {
       contents: [{ role: 'user', parts: [{ text: userText }] }],
-      generationConfig: Object.assign({ temperature: 0.3, maxOutputTokens: 2048 }, extraConfig || {})
+      generationConfig: Object.assign({ temperature: 0.3, maxOutputTokens: 4096 }, extraConfig || {})
     };
+    // Disable thinking on 2.5-flash so output tokens aren't consumed by thought chains
+    if (model.indexOf('2.5') !== -1) body.thinkingConfig = { thinkingBudget: 0 };
+    return body;
   });
   return result.text;
 }
